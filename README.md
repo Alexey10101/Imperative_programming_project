@@ -1,27 +1,27 @@
 # robot_spatial
 
-Консольная утилита для работы с пространственными данными 2D/3D из CSV:
-- `k-d tree`: вставка, удаление, ближайший сосед
-- `Fuzzy C-means`: мягкая кластеризация (центроиды, hard-метки и степени принадлежности)
-- `DBSCAN`: кластеризация по плотности с выделением шума
+Console utility in C for 2D/3D spatial data processing from CSV:
+- `k-d tree`: insert, delete, nearest neighbor
+- `Fuzzy C-means`: soft clustering (centroids, hard labels, membership degrees)
+- `DBSCAN`: density-based clustering with noise detection
 
-## Соответствие ТЗ
+## Requirement Coverage
 
-- Язык реализации: **C**
-- Поддержка пространственных данных: **только 2D или 3D**
-- Реализованы операции `k-d tree`:
-  - вставка точки
-  - удаление точки
-  - поиск ближайшего соседа
-- Реализован `Fuzzy C-means`:
-  - итеративное обновление центроидов
-  - вычисление матрицы принадлежности
-- Реализован `DBSCAN`:
-  - поиск точек в `ε`-окрестности
-  - расширение кластера
-  - пометка шума (`-1`)
+- Language: **C**
+- Spatial data support: **strictly 2D or 3D**
+- `k-d tree` operations:
+  - point insertion
+  - point deletion
+  - nearest-neighbor search
+- `Fuzzy C-means`:
+  - iterative centroid update
+  - membership matrix computation
+- `DBSCAN`:
+  - epsilon-neighborhood search
+  - cluster expansion
+  - noise marking (`-1`)
 
-## Сборка
+## Build
 
 Linux/macOS:
 
@@ -29,7 +29,7 @@ Linux/macOS:
 make
 ```
 
-или:
+or:
 
 ```bash
 gcc -O2 -std=c11 -Wall -Wextra -pedantic robot.c -lm -o robot_spatial
@@ -41,9 +41,9 @@ Windows (MinGW):
 gcc -O2 -std=c11 -Wall -Wextra -pedantic robot.c -lm -o robot_spatial.exe
 ```
 
-## Формат данных
+## Input Format
 
-CSV без заголовка, одна точка в строке:
+CSV without header, one point per line:
 
 ```csv
 0.0,1.0
@@ -51,11 +51,11 @@ CSV без заголовка, одна точка в строке:
 5.6,7.8
 ```
 
-Важно:
-- все строки должны иметь одинаковую размерность;
-- допустимы только 2 координаты (`x,y`) или 3 координаты (`x,y,z`).
+Rules:
+- all rows must have the same dimensionality;
+- only `x,y` or `x,y,z` are allowed.
 
-## Использование
+## Usage
 
 ```bash
 ./robot_spatial <csv> -kd_insert  x,y
@@ -69,7 +69,7 @@ CSV без заголовка, одна точка в строке:
 ./robot_spatial <csv> -dbscan <eps> <minPts>
 ```
 
-Примеры:
+Examples:
 
 ```bash
 ./robot_spatial lidar.csv -kd_nearest 1.0,2.0
@@ -77,7 +77,7 @@ CSV без заголовка, одна точка в строке:
 ./robot_spatial lidar.csv -dbscan 0.5,5
 ```
 
-PowerShell:
+PowerShell note:
 
 ```powershell
 .\robot_spatial.exe lidar.csv -dbscan '0.5,5'
