@@ -171,6 +171,13 @@ int load_csv(const char *path, PointCloud *pc)
         return 0;
     }
 
+    if (!(dim == 2 || dim == 3))
+    {
+        fprintf(stderr, "Only 2D or 3D point clouds are supported. Got dimension: %zu\n", dim);
+        free(store);
+        return 0;
+    }
+
     pc->values = store;
     pc->n = n;
     pc->dim = dim;
@@ -528,7 +535,6 @@ int fuzzy_cmeans(const PointCloud *pc, int c, double m, int iters, double tol, i
     size_t C = (size_t)c;
     double *u = NULL;
     double maxc = 0.0;
-    KDNode *cent_tree = NULL;
 
     if (c <= 0 || C > n || m <= 1.0) return 0;
 
@@ -610,34 +616,34 @@ int fuzzy_cmeans(const PointCloud *pc, int c, double m, int iters, double tol, i
         if (maxc < tol) break;
     }
 
+    for (size_t i = 0; i < n; i++)
     {
-        int ok = 1;
-        for (size_t j = 0; j < C; j++)
+        size_t bj = 0;
+        for (size_t j = 1; j < C; j++)
         {
-            cent_tree = kd_insert(cent_tree, cent + j * d, d, 0, &ok);
-            if (!ok) break;
+            if (u[i * C + j] > u[i * C + bj]) bj = j;
         }
-
-        for (size_t i = 0; i < n; i++)
-        {
-            const double *best = NULL;
-            double best_d2 = DBL_MAX;
-            size_t bj = 0;
-            kd_nearest(cent_tree, P(pc, i), d, 0, &best, &best_d2);
-            for (size_t j = 0; j < C; j++)
-            {
-                if (peq(best, cent + j * d, d))
-                {
-                    bj = j;
-                    break;
-                }
-            }
-            labels[i] = (int)bj;
-        }
+        labels[i] = (int)bj;
     }
-    kd_free(cent_tree);
+
     free(u);
     return 1;
+}
+
+static double cmeans_membership(const double *x, const double *cent, size_t dim, int c, int j, double m)
+{
+    double dij2 = d2(x, cent + (size_t)j * dim, dim);
+    if (dij2 < EPS) return 1.0;
+
+    double dij = sqrt(dij2);
+    double sum = 0.0;
+    for (int k = 0; k < c; k++)
+    {
+        double dik2 = d2(x, cent + (size_t)k * dim, dim);
+        if (dik2 < EPS) return 0.0;
+        sum += pow(dij / sqrt(dik2), 2.0 / (m - 1.0));
+    }
+    return 1.0 / sum;
 }
 
 static int parse_dbscan_arg(const char *s, double *eps, int *minPts)
@@ -651,9 +657,9 @@ static int parse_dbscan_arg(const char *s, double *eps, int *minPts)
 static void usage(const char *p)
 {
     fprintf(stderr, "Usage:\n");
-    fprintf(stderr, "  %s <csv> -kd_insert  x,y[,z,...]\n", p);
-    fprintf(stderr, "  %s <csv> -kd_delete  x,y[,z,...]\n", p);
-    fprintf(stderr, "  %s <csv> -kd_nearest x,y[,z,...]\n", p);
+    fprintf(stderr, "  %s <csv> -kd_insert  x,y   or x,y,z\n", p);
+    fprintf(stderr, "  %s <csv> -kd_delete  x,y   or x,y,z\n", p);
+    fprintf(stderr, "  %s <csv> -kd_nearest x,y   or x,y,z\n", p);
     fprintf(stderr, "  %s <csv> -cmeans <clusters> [m] [max_iter] [tol]\n", p);
     fprintf(stderr, "  %s <csv> -dbscan <eps,minPts>  OR  <eps> <minPts>\n", p);
 }
@@ -742,6 +748,31 @@ int main(int argc, char **argv)
         puts("Point assignments:");
         for (size_t i = 0; i < pc.n; i++)
             printf("  Point %zu -> C%d\n", i, labels[i]);
+
+        puts("Membership degrees:");
+        for (size_t i = 0; i < pc.n; i++)
+        {
+            int z = -1;
+            printf("  Point %zu: ", i);
+            for (int j = 0; j < c; j++)
+            {
+                if (d2(P(&pc, i), cent + (size_t)j * pc.dim, pc.dim) < EPS)
+                {
+                    z = j;
+                    break;
+                }
+            }
+
+            for (int j = 0; j < c; j++)
+            {
+                double u = 0.0;
+                if (z >= 0) u = (j == z) ? 1.0 : 0.0;
+                else u = cmeans_membership(P(&pc, i), cent, pc.dim, c, j, m);
+                printf("C%d=%.6f%s", j, u, (j + 1 == c) ? "" : ", ");
+            }
+            puts("");
+        }
+
         free(labels);
         free(cent);
     }
