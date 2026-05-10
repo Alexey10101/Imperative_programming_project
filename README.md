@@ -1,27 +1,27 @@
 # robot_spatial
 
-Console utility in C for 2D/3D spatial data processing from CSV:
-- `k-d tree`: insert, delete, nearest neighbor
-- `Fuzzy C-means`: soft clustering (centroids, hard labels, membership degrees)
-- `DBSCAN`: density-based clustering with noise detection
+Консольная утилита на C для обработки пространственных данных 2D/3D из CSV:
+- `k-d tree`: вставка, удаление, поиск ближайшего соседа
+- `Fuzzy C-means`: мягкая кластеризация (центроиды, hard-метки, степени принадлежности)
+- `DBSCAN`: кластеризация по плотности с выделением шума
 
-## Requirement Coverage
+## Соответствие ТЗ
 
-- Language: **C**
-- Spatial data support: **strictly 2D or 3D**
-- `k-d tree` operations:
-  - point insertion
-  - point deletion
-  - nearest-neighbor search
+- Язык реализации: **C**
+- Поддержка данных: **строго 2D или 3D**
+- `k-d tree`:
+  - добавление точки
+  - удаление точки
+  - поиск ближайшей точки
 - `Fuzzy C-means`:
-  - iterative centroid update
-  - membership matrix computation
+  - итеративное обновление центроидов
+  - вычисление степеней принадлежности
 - `DBSCAN`:
-  - epsilon-neighborhood search
-  - cluster expansion
-  - noise marking (`-1`)
+  - поиск точек в `ε`-окрестности
+  - расширение кластера
+  - шум помечается как `-1`
 
-## Build
+## Сборка
 
 Linux/macOS:
 
@@ -29,7 +29,7 @@ Linux/macOS:
 make
 ```
 
-or:
+или:
 
 ```bash
 gcc -O2 -std=c11 -Wall -Wextra -pedantic robot.c -lm -o robot_spatial
@@ -41,9 +41,9 @@ Windows (MinGW):
 gcc -O2 -std=c11 -Wall -Wextra -pedantic robot.c -lm -o robot_spatial.exe
 ```
 
-## Input Format
+## Формат входных данных
 
-CSV without header, one point per line:
+CSV без заголовка, одна точка в строке:
 
 ```csv
 0.0,1.0
@@ -51,11 +51,11 @@ CSV without header, one point per line:
 5.6,7.8
 ```
 
-Rules:
-- all rows must have the same dimensionality;
-- only `x,y` or `x,y,z` are allowed.
+Требования:
+- во всех строках одинаковое число координат;
+- допустимы только `x,y` или `x,y,z`.
 
-## Usage
+## Использование
 
 ```bash
 ./robot_spatial <csv> -kd_insert  x,y
@@ -69,7 +69,7 @@ Rules:
 ./robot_spatial <csv> -dbscan <eps> <minPts>
 ```
 
-Examples:
+Примеры:
 
 ```bash
 ./robot_spatial lidar.csv -kd_nearest 1.0,2.0
@@ -77,7 +77,7 @@ Examples:
 ./robot_spatial lidar.csv -dbscan 0.5,5
 ```
 
-PowerShell note:
+Для PowerShell:
 
 ```powershell
 .\robot_spatial.exe lidar.csv -dbscan '0.5,5'
