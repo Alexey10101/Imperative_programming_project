@@ -1,0 +1,6 @@
+# Build artifacts
+*.exe
+*.o
+
+# Local test data
+sample4d.csv
