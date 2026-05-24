@@ -1,6 +1,6 @@
 # robot_spatial
 
-Консольная утилита на C для обработки пространственных данных 2D/3D из CSV:
+Консольная утилита на C для обработки пространственных данных k-мерности из CSV:
 - `k-d tree`: вставка, удаление, поиск ближайшего соседа
 - `Fuzzy C-means`: мягкая кластеризация (центроиды, hard-метки, степени принадлежности)
 - `DBSCAN`: кластеризация по плотности с выделением шума
@@ -50,17 +50,14 @@ CSV без заголовка, одна точка в строке:
 
 Требования:
 - во всех строках одинаковое число координат;
-- допустимы только `x,y` или `x,y,z`.
+- поддерживаются точки размерности `k >= 2` (например `x,y`, `x,y,z`, `x1,x2,x3,x4` и т.д.).
 
 ## Использование
 
 ```bash
-./robot_spatial <csv> -kd_insert  x,y
-./robot_spatial <csv> -kd_insert  x,y,z
-./robot_spatial <csv> -kd_delete  x,y
-./robot_spatial <csv> -kd_delete  x,y,z
-./robot_spatial <csv> -kd_nearest x,y
-./robot_spatial <csv> -kd_nearest x,y,z
+./robot_spatial <csv> -kd_insert  x1,x2[,x3,...,xk]
+./robot_spatial <csv> -kd_delete  x1,x2[,x3,...,xk]
+./robot_spatial <csv> -kd_nearest x1,x2[,x3,...,xk]
 ./robot_spatial <csv> -cmeans <clusters> [m] [max_iter] [tol]
 ./robot_spatial <csv> -dbscan <eps,minPts>
 ./robot_spatial <csv> -dbscan <eps> <minPts>

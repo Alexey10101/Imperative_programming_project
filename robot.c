@@ -172,13 +172,6 @@ int load_csv(const char *path, PointCloud *pc)
         return 0;
     }
 
-    if (!(dim == 2 || dim == 3))
-    {
-        fprintf(stderr, "Only 2D or 3D point clouds are supported. Got dimension: %zu\n", dim);
-        free(store);
-        return 0;
-    }
-
     pc->values = store;
     pc->n = n;
     pc->dim = dim;
@@ -666,9 +659,9 @@ static int parse_dbscan_arg(const char *s, double *eps, int *minPts)
 static void usage(const char *p)
 {
     fprintf(stderr, "Usage:\n");
-    fprintf(stderr, "  %s <csv> -kd_insert  x,y   or x,y,z\n", p);
-    fprintf(stderr, "  %s <csv> -kd_delete  x,y   or x,y,z\n", p);
-    fprintf(stderr, "  %s <csv> -kd_nearest x,y   or x,y,z\n", p);
+    fprintf(stderr, "  %s <csv> -kd_insert  x1,x2[,x3,...,xk]\n", p);
+    fprintf(stderr, "  %s <csv> -kd_delete  x1,x2[,x3,...,xk]\n", p);
+    fprintf(stderr, "  %s <csv> -kd_nearest x1,x2[,x3,...,xk]\n", p);
     fprintf(stderr, "  %s <csv> -cmeans <clusters> [m] [max_iter] [tol]\n", p);
     fprintf(stderr, "  %s <csv> -dbscan <eps,minPts>  OR  <eps> <minPts>\n", p);
 }
