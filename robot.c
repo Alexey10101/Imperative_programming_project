@@ -10,12 +10,14 @@
 #define EPS 1e-9
 #define P(pc, i) ((pc)->values + (i) * (pc)->dim)
 
+// динамический массив целочисленных индексов
 typedef struct {
     int *a;
     size_t n;
     size_t cap;
 } IntVec;
 
+// узел ссылочного дерева: хранит ссылку на точку и её индекс
 typedef struct KDRefNode {
     const double *point;
     int idx;
@@ -23,6 +25,7 @@ typedef struct KDRefNode {
     struct KDRefNode *right;
 } KDRefNode;
 
+// копирует C-строку в динамическую память
 static char *xstrdup(const char *s)
 {
     size_t n = strlen(s) + 1;
@@ -31,6 +34,7 @@ static char *xstrdup(const char *s)
     return d;
 }
 
+// удаляет пробелы в начале и в конце строки (in-place)
 static void trim(char *s)
 {
     size_t i = 0, j = strlen(s);
@@ -41,6 +45,7 @@ static void trim(char *s)
     if (i) memmove(s, s + i, j - i + 1);
 }
 
+// парсит одно число с плавающей точкой; 1 при успехе
 static int parse_num(const char *t, double *v)
 {
     char *e = NULL;
@@ -49,6 +54,7 @@ static int parse_num(const char *t, double *v)
     return e && e != t && *e == '\0';
 }
 
+// добавляет значение в IntVec (массив расширяется автоматически)
 static int vec_push(IntVec *v, int x)
 {
     if (v->n == v->cap)
@@ -63,6 +69,7 @@ static int vec_push(IntVec *v, int x)
     return 1;
 }
 
+// разбирает список координат через запятую в динамический массив
 static int parse_list(const char *line, double **vals, size_t *cnt)
 {
     char *buf = xstrdup(line), *cur = NULL;
@@ -105,13 +112,13 @@ static int parse_list(const char *line, double **vals, size_t *cnt)
         if (!comma) break;
         cur = comma + 1;
     }
-
     free(buf);
     *vals = a;
     *cnt = n;
     return n > 0;
 }
 
+// читает точки из CSV-файла в структуру PointCloud
 int load_csv(const char *path, PointCloud *pc)
 {
     FILE *f = fopen(path, "r");
@@ -165,7 +172,6 @@ int load_csv(const char *path, PointCloud *pc)
     }
 
     fclose(f);
-
     if (!n || !dim)
     {
         free(store);
@@ -178,6 +184,7 @@ int load_csv(const char *path, PointCloud *pc)
     return 1;
 }
 
+// освобождает память PointCloud и сбрасывает поля
 void free_cloud(PointCloud *pc)
 {
     free(pc->values);
@@ -186,6 +193,7 @@ void free_cloud(PointCloud *pc)
     pc->dim = 0;
 }
 
+// квадрат евклидового расстояния между двумя точками
 static double d2(const double *a, const double *b, size_t dim)
 {
     double s = 0.0;
@@ -197,6 +205,7 @@ static double d2(const double *a, const double *b, size_t dim)
     return s;
 }
 
+// сравнивает точки с учётом погрешности EPS
 static int peq(const double *a, const double *b, size_t dim)
 {
     for (size_t i = 0; i < dim; i++)
@@ -204,6 +213,7 @@ static int peq(const double *a, const double *b, size_t dim)
     return 1;
 }
 
+// создаёт узел k-d дерева и копирует координаты точки
 static KDNode *node_new(const double *p, size_t dim)
 {
     KDNode *n = (KDNode *)calloc(1, sizeof(KDNode));
@@ -220,6 +230,7 @@ static KDNode *node_new(const double *p, size_t dim)
     return n;
 }
 
+// рекурсивно вставляет точку в k-d дерево
 KDNode *kd_insert(KDNode *r, const double *p, size_t dim, size_t depth, int *ok)
 {
     size_t cd = depth % dim;
@@ -236,6 +247,7 @@ KDNode *kd_insert(KDNode *r, const double *p, size_t dim, size_t depth, int *ok)
     return r;
 }
 
+// ищет узел с минимумом по выбранной размерности
 static KDNode *kd_min(KDNode *r, size_t td, size_t dim, size_t depth)
 {
     KDNode *a = NULL;
@@ -253,6 +265,7 @@ static KDNode *kd_min(KDNode *r, size_t td, size_t dim, size_t depth)
     return m;
 }
 
+// удаляет точку из k-d дерева с сохранением структуры
 KDNode *kd_delete(KDNode *r, const double *p, size_t dim, size_t depth, int *del)
 {
     size_t cd = depth % dim;
@@ -284,6 +297,7 @@ KDNode *kd_delete(KDNode *r, const double *p, size_t dim, size_t depth, int *del
     return r;
 }
 
+// поиск ближайшего соседа в k-d дереве с отсечением ветвей
 void kd_nearest(KDNode *r, const double *q, size_t dim, size_t depth, const double **best, double *best_d2)
 {
     size_t cd = 0;
@@ -307,6 +321,7 @@ void kd_nearest(KDNode *r, const double *q, size_t dim, size_t depth, const doub
     if (ad * ad < *best_d2) kd_nearest(far, q, dim, depth + 1, best, best_d2);
 }
 
+// рекурсивно освобождает все узлы k-d дерева
 void kd_free(KDNode *r)
 {
     if (!r) return;
@@ -316,11 +331,11 @@ void kd_free(KDNode *r)
     free(r);
 }
 
+// строит k-d дерево по всем точкам облака
 KDNode *kd_build(const PointCloud *pc)
 {
     KDNode *r = NULL;
     int ok = 1;
-
     for (size_t i = 0; i < pc->n; i++)
     {
         r = kd_insert(r, P(pc, i), pc->dim, 0, &ok);
@@ -333,6 +348,7 @@ KDNode *kd_build(const PointCloud *pc)
     return r;
 }
 
+// создаёт узел ссылочного дерева для radius-поиска в DBSCAN
 static KDRefNode *kdref_new(const double *p, int idx)
 {
     KDRefNode *n = (KDRefNode *)calloc(1, sizeof(KDRefNode));
@@ -342,6 +358,7 @@ static KDRefNode *kdref_new(const double *p, int idx)
     return n;
 }
 
+// вставляет индексированную точку в ссылочное k-d дерево
 static KDRefNode *kdref_insert(KDRefNode *r, const double *p, int idx, size_t dim, size_t depth, int *ok)
 {
     size_t cd = depth % dim;
@@ -357,6 +374,7 @@ static KDRefNode *kdref_insert(KDRefNode *r, const double *p, int idx, size_t di
     return r;
 }
 
+// строит ссылочное k-d дерево из точек облака
 static KDRefNode *kdref_build(const PointCloud *pc)
 {
     KDRefNode *r = NULL;
@@ -369,6 +387,7 @@ static KDRefNode *kdref_build(const PointCloud *pc)
     return r;
 }
 
+// освобождает ссылочное k-d дерево, используемое DBSCAN
 static void kdref_free(KDRefNode *r)
 {
     if (!r) return;
@@ -377,6 +396,7 @@ static void kdref_free(KDRefNode *r)
     free(r);
 }
 
+// собирает всех соседей в радиусе eps в массив out
 static int kdref_radius(const KDRefNode *r, const double *q, double eps2, size_t dim, size_t depth, IntVec *out)
 {
     size_t cd = depth % dim;
@@ -401,6 +421,7 @@ static int kdref_radius(const KDRefNode *r, const double *q, double eps2, size_t
     return 1;
 }
 
+// разбирает строку точки из CLI в массив координат
 int parse_point(const char *arg, size_t dim, double *out)
 {
     double *vals = NULL;
@@ -416,11 +437,13 @@ int parse_point(const char *arg, size_t dim, double *out)
     return 1;
 }
 
+// печатает точку в формате x1,x2,...
 void print_point(const double *p, size_t dim)
 {
     for (size_t i = 0; i < dim; i++) printf("%s%.6f", i ? "," : "", p[i]);
 }
 
+// выполняет DBSCAN; возвращает метки точек и число кластеров
 int dbscan(const PointCloud *pc, double eps, int minPts, int *labels, int *clusters)
 {
     size_t n = pc->n;
@@ -433,8 +456,10 @@ int dbscan(const PointCloud *pc, double eps, int minPts, int *labels, int *clust
     int stamp = 1;
     int ok = 1;
 
+    // проверка входных параметров DBSCAN
     if (eps <= 0.0 || minPts <= 0) return 0;
 
+    // подготовка служебных структур: дерево, очередь, штампы, посещённость
     tree = kdref_build(pc);
     queue = (int *)malloc(n * sizeof(int));
     inq_stamp = (int *)calloc(n, sizeof(int));
@@ -450,8 +475,10 @@ int dbscan(const PointCloud *pc, double eps, int minPts, int *labels, int *clust
         return 0;
     }
 
+    // все точки ещё не посещены (-2)
     for (size_t i = 0; i < n; i++) labels[i] = -2;
 
+    // основной проход по всем точкам
     for (size_t i = 0; i < n; i++)
     {
         size_t qh = 0;
@@ -459,6 +486,7 @@ int dbscan(const PointCloud *pc, double eps, int minPts, int *labels, int *clust
         if (vis[i]) continue;
         vis[i] = 1;
 
+        // шаг 1: ищем eps-окрестность стартовой точки
         nbr.n = 0;
         if (!kdref_radius(tree, P(pc, i), eps2, pc->dim, 0, &nbr))
         {
@@ -466,21 +494,18 @@ int dbscan(const PointCloud *pc, double eps, int minPts, int *labels, int *clust
             break;
         }
 
+        // если соседей меньше minPts, точка считается шумом
         if ((int)nbr.n < minPts)
         {
             labels[i] = -1;
             continue;
         }
 
-        if (stamp == 0x7fffffff)
-        {
-            memset(inq_stamp, 0, n * sizeof(int));
-            stamp = 1;
-        }
-        else
-            stamp++;
-
+        // шаг 2: начинаем новый кластер и обновляем stamp для очереди
+        stamp++;
         labels[i] = cid;
+
+        // шаг 3: кладём стартовую окрестность в очередь без дубликатов
         for (size_t k = 0; k < nbr.n; k++)
         {
             int v = nbr.a[k];
@@ -491,6 +516,7 @@ int dbscan(const PointCloud *pc, double eps, int minPts, int *labels, int *clust
             }
         }
 
+        // шаг 4: расширяем кластер BFS-подобно по очереди
         while (qh < qt)
         {
             int p = queue[qh++];
@@ -498,11 +524,15 @@ int dbscan(const PointCloud *pc, double eps, int minPts, int *labels, int *clust
             {
                 vis[p] = 1;
                 nbr2.n = 0;
+
+                // ищем окрестность очередной точки
                 if (!kdref_radius(tree, P(pc, (size_t)p), eps2, pc->dim, 0, &nbr2))
                 {
                     ok = 0;
                     break;
                 }
+
+                // только ядро (nbr2 >= minPts) расширяет кластер дальше
                 if ((int)nbr2.n >= minPts)
                 {
                     for (size_t t = 0; t < nbr2.n; t++)
@@ -516,10 +546,13 @@ int dbscan(const PointCloud *pc, double eps, int minPts, int *labels, int *clust
                     }
                 }
             }
+            // если точка была шумом/неразмеченной, присваиваем текущий cid
             if (labels[p] < 0) labels[p] = cid;
         }
+        // кластер завершён, переходим к следующему id
         cid++;
     }
+    // возвращаем число найденных кластеров и освобождаем память
     *clusters = cid;
     kdref_free(tree);
     free(queue);
@@ -530,6 +563,7 @@ int dbscan(const PointCloud *pc, double eps, int minPts, int *labels, int *clust
     return ok;
 }
 
+// выполняет fuzzy C-means; возвращает hard-метки и центроиды
 int fuzzy_cmeans(const PointCloud *pc, int c, double m, int iters, double tol, int *labels, double *cent)
 {
     size_t n = pc->n;
@@ -537,12 +571,13 @@ int fuzzy_cmeans(const PointCloud *pc, int c, double m, int iters, double tol, i
     size_t C = (size_t)c;
     double *u = NULL;
     double maxc = 0.0;
-
     if (c <= 0 || C > n || m <= 1.0) return 0;
 
+    // выделяем матрицу принадлежностей U размера n * C
     u = (double *)malloc(n * C * sizeof(double));
     if (!u) return 0;
 
+    // инициализация матрицы принадлежностей U случайными значениями
     srand(42);
     for (size_t i = 0; i < n; i++)
     {
@@ -553,12 +588,15 @@ int fuzzy_cmeans(const PointCloud *pc, int c, double m, int iters, double tol, i
             s += u[i * C + j];
         }
         for (size_t j = 0; j < C; j++)
-            u[i * C + j] /= s;
+            u[i * C + j] /= s; // сумма по кластерам = 1
     }
 
+    // итерационный цикл: центроиды -> принадлежности -> проверка сходимости
     for (int it = 0; it < iters; it++)
     {
         maxc = 0.0;
+
+        // шаг 1: обновление центроидов (вес u^m)
         for (size_t j = 0; j < C; j++)
         {
             double den = 0.0;
@@ -582,9 +620,11 @@ int fuzzy_cmeans(const PointCloud *pc, int c, double m, int iters, double tol, i
                 cent[j * d + t] /= den;
         }
 
+        // шаг 2: обновление принадлежностей
         for (size_t i = 0; i < n; i++)
         {
             int z = -1;
+            // если точка совпала с центроидом
             for (size_t j = 0; j < C; j++)
             {
                 if (d2(P(pc, i), cent + j * d, d) < EPS)
@@ -615,9 +655,12 @@ int fuzzy_cmeans(const PointCloud *pc, int c, double m, int iters, double tol, i
                 u[i * C + j] = nu;
             }
         }
+
+        // шаг 3: критерий сходимости
         if (maxc < tol) break;
     }
 
+    // кластеры с максимальной принадлежностью (hard-метки)
     for (size_t i = 0; i < n; i++)
     {
         size_t bj = 0;
@@ -632,6 +675,7 @@ int fuzzy_cmeans(const PointCloud *pc, int c, double m, int iters, double tol, i
     return 1;
 }
 
+// считает принадлежность точки x кластеру j
 static double cmeans_membership(const double *x, const double *cent, size_t dim, int c, int j, double m)
 {
     double dij2 = d2(x, cent + (size_t)j * dim, dim);
@@ -648,6 +692,7 @@ static double cmeans_membership(const double *x, const double *cent, size_t dim,
     return 1.0 / sum;
 }
 
+// разбирает аргумент DBSCAN в формате "eps,minPts"
 static int parse_dbscan_arg(const char *s, double *eps, int *minPts)
 {
     char tail = '\0';
@@ -656,6 +701,7 @@ static int parse_dbscan_arg(const char *s, double *eps, int *minPts)
     return *eps > 0.0 && *minPts > 0;
 }
 
+// печатает справку по запуску
 static void usage(const char *p)
 {
     fprintf(stderr, "Usage:\n");
@@ -666,6 +712,7 @@ static void usage(const char *p)
     fprintf(stderr, "  %s <csv> -dbscan <eps,minPts>  OR  <eps> <minPts>\n", p);
 }
 
+// точка входа: парсит CLI, запускает выбранную операцию, печатает результат
 int main(int argc, char **argv)
 {
     PointCloud pc = {0};
@@ -751,6 +798,7 @@ int main(int argc, char **argv)
         for (size_t i = 0; i < pc.n; i++)
             printf("  Point %zu -> C%d\n", i, labels[i]);
 
+        // печать мягких принадлежностей каждой точки ко всем кластерам
         puts("Membership degrees:");
         for (size_t i = 0; i < pc.n; i++)
         {
@@ -774,7 +822,6 @@ int main(int argc, char **argv)
             }
             puts("");
         }
-
         free(labels);
         free(cent);
     }
@@ -783,7 +830,6 @@ int main(int argc, char **argv)
         double eps = 0.0;
         int minPts = 0, k = 0;
         int *labels = (int *)malloc(pc.n * sizeof(int));
-
         if (!labels)
         {
             free_cloud(&pc);
