@@ -138,6 +138,7 @@ int load_csv(const char *path, PointCloud *pc)
         }
 
         if (!dim) dim = k;
+        
         if (k != dim)
         {
             fclose(f);
@@ -437,6 +438,7 @@ int dbscan(const PointCloud *pc, double eps, int minPts, int *labels, int *clust
     int *queue = NULL, *inq_stamp = NULL;
     unsigned char *vis = NULL;
     int stamp = 1;
+    int ok = 1;
 
     if (eps <= 0.0 || minPts <= 0) return 0;
 
@@ -465,7 +467,11 @@ int dbscan(const PointCloud *pc, double eps, int minPts, int *labels, int *clust
         vis[i] = 1;
 
         nbr.n = 0;
-        if (!kdref_radius(tree, P(pc, i), eps2, pc->dim, 0, &nbr)) break;
+        if (!kdref_radius(tree, P(pc, i), eps2, pc->dim, 0, &nbr))
+        {
+            ok = 0;
+            break;
+        }
 
         if ((int)nbr.n < minPts)
         {
@@ -500,7 +506,10 @@ int dbscan(const PointCloud *pc, double eps, int minPts, int *labels, int *clust
                 vis[p] = 1;
                 nbr2.n = 0;
                 if (!kdref_radius(tree, P(pc, (size_t)p), eps2, pc->dim, 0, &nbr2))
+                {
+                    ok = 0;
                     break;
+                }
                 if ((int)nbr2.n >= minPts)
                 {
                     for (size_t t = 0; t < nbr2.n; t++)
@@ -525,7 +534,7 @@ int dbscan(const PointCloud *pc, double eps, int minPts, int *labels, int *clust
     free(vis);
     free(nbr.a);
     free(nbr2.a);
-    return 1;
+    return ok;
 }
 
 int fuzzy_cmeans(const PointCloud *pc, int c, double m, int iters, double tol, int *labels, double *cent)
